@@ -43,8 +43,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-center mb-4">
-          <img src="/logo.ico" alt="NaviChat Logo" className="h-8 w-8 mr-2" />
-          <h1 className="text-xl font-bold text-white">NaviChat</h1>
+          <img src="/logo.png" alt="EdisonAI Logo" className="h-8 w-8 mr-2" />
+          <h1 className="text-xl font-bold text-white">EdisonAI</h1>
         </div>
         <button
           onClick={onNewChat}
