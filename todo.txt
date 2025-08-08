@@ -1,0 +1,1 @@
+I want copy option or icon top right corner of code for code snippit and i want one copy option at bottom of each response, there is not delete option to delete previous chat conversation,  with enter it is not executing i have to click on send

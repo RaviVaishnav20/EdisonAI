@@ -1,3 +1,115 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Coffee theme - Latte light */
+    --background: 40 30% 96%; /* latte foam */
+    --foreground: 24 22% 20%; /* deep roast text */
+
+    --card: 0 0% 100%;
+    --card-foreground: var(--foreground);
+
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--foreground);
+
+    --primary: 25 35% 32%; /* espresso brown */
+    --primary-foreground: 40 30% 96%;
+
+    --secondary: 35 25% 88%; /* oat milk */
+    --secondary-foreground: 24 22% 20%;
+
+    --muted: 35 25% 90%;
+    --muted-foreground: 24 12% 35%;
+
+    --accent: 30 70% 50%; /* caramel */
+    --accent-foreground: 45 40% 98%;
+
+    --destructive: 6 78% 57%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 30 18% 82%;
+    --input: 30 18% 82%;
+    --ring: 30 70% 50%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar tokens */
+    --sidebar-background: 40 30% 97%;
+    --sidebar-foreground: 24 22% 22%;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: 35 25% 92%;
+    --sidebar-accent-foreground: 24 22% 22%;
+    --sidebar-border: 30 18% 82%;
+    --sidebar-ring: var(--ring);
+
+    /* Extras */
+    --brand: 30 70% 50%;
+    --brand-contrast: 24 22% 15%;
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    --gradient-subtle: radial-gradient(1000px 600px at 20% 10%, hsl(var(--accent) / 0.18), transparent 40%),
+                       radial-gradient(900px 500px at 80% 70%, hsl(var(--primary) / 0.15), transparent 45%),
+                       linear-gradient(180deg, hsl(var(--background)), hsl(var(--secondary) / 0.5));
+    --shadow-elegant: 0 12px 30px -12px hsl(var(--primary) / 0.25);
+    --shadow-glow: 0 0 40px hsl(var(--accent) / 0.35);
+  }
+
+  .dark {
+    /* Coffee theme - Espresso dark */
+    --background: 24 22% 12%;
+    --foreground: 35 25% 92%;
+
+    --card: 24 22% 14%;
+    --card-foreground: 35 25% 92%;
+
+    --popover: 24 22% 14%;
+    --popover-foreground: 35 25% 92%;
+
+    --primary: 30 35% 42%;
+    --primary-foreground: 40 30% 96%;
+
+    --secondary: 24 12% 18%;
+    --secondary-foreground: 35 25% 92%;
+
+    --muted: 24 12% 22%;
+    --muted-foreground: 35 15% 70%;
+
+    --accent: 30 70% 56%;
+    --accent-foreground: 40 30% 96%;
+
+    --destructive: 6 58% 40%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 24 12% 22%;
+    --input: 24 12% 22%;
+    --ring: 30 70% 56%;
+
+    --sidebar-background: 24 22% 10%;
+    --sidebar-foreground: 35 25% 92%;
+    --sidebar-primary: 30 35% 42%;
+    --sidebar-primary-foreground: 40 30% 96%;
+    --sidebar-accent: 24 12% 16%;
+    --sidebar-accent-foreground: 35 25% 92%;
+    --sidebar-border: 24 12% 16%;
+    --sidebar-ring: 30 70% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image: var(--gradient-subtle);
+    background-attachment: fixed;
+    background-size: cover;
+  }
+}
