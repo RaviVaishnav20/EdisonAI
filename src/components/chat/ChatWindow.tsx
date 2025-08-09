@@ -5,7 +5,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { LocalMessage } from "@/types/chat";
 import { cn } from "@/lib/utils";
-import { Copy, Check, Pencil, X } from "lucide-react";
+import { Copy, Check, Pencil, X, Mic, MicOff, Square, Volume2, VolumeX } from "lucide-react";
+import { transcribeAudio } from "@/lib/transcription";
+import { textToSpeech } from "@/lib/tts";
+import { loadSettings } from "@/lib/settings";
+import { toast } from "@/hooks/use-toast";
 
 interface Props {
   messages: LocalMessage[];
@@ -23,6 +27,19 @@ export default function ChatWindow({ messages, onSend, onEditMessage, disabled, 
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  
+  // Microphone state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  
+  // TTS state
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  
+  // Load settings fresh each time we need them
+  const getSettings = () => loadSettings();
 
   const copyText = async (text: string) => {
     try {
@@ -51,6 +68,114 @@ export default function ChatWindow({ messages, onSend, onEditMessage, disabled, 
     if (!input.trim()) return;
     onSend(input.trim());
     setInput("");
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsTranscribing(true);
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        
+        try {
+          const result = await transcribeAudio(audioBlob);
+          if (result.success) {
+            setInput(result.text);
+            toast({ title: "Transcription complete", description: "Your voice has been transcribed." });
+          } else {
+            toast({ title: "Transcription failed", description: result.error || "Unknown error occurred", variant: "destructive" });
+          }
+        } catch (error) {
+          toast({ title: "Transcription failed", description: "An error occurred during transcription", variant: "destructive" });
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      toast({ title: "Microphone access denied", description: "Please allow microphone access to use voice input", variant: "destructive" });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const speakText = async (text: string) => {
+    if (isSpeaking) {
+      // Stop current speech
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        setCurrentAudio(null);
+      }
+      setIsSpeaking(false);
+      return;
+    }
+
+    try {
+      setIsSpeaking(true);
+      const result = await textToSpeech(text);
+      
+      if (result.success && result.audioUrl) {
+        const audio = new Audio(result.audioUrl);
+        audio.onended = () => {
+          setIsSpeaking(false);
+          setCurrentAudio(null);
+          URL.revokeObjectURL(result.audioUrl!);
+        };
+        audio.onerror = () => {
+          setIsSpeaking(false);
+          setCurrentAudio(null);
+          toast({ title: "TTS Error", description: "Failed to play audio", variant: "destructive" });
+        };
+        
+        setCurrentAudio(audio);
+        await audio.play();
+      } else {
+        setIsSpeaking(false);
+        toast({ title: "TTS Failed", description: result.error || "Unknown error", variant: "destructive" });
+      }
+    } catch (error) {
+      setIsSpeaking(false);
+      toast({ title: "TTS Error", description: "An error occurred during TTS", variant: "destructive" });
+    }
+  };
+
+  // Check if microphone should be enabled
+  const shouldShowMicrophone = () => {
+    const settings = getSettings();
+    return settings.microphoneEnabled && settings.transcriptionProvider;
+  };
+
+  // Check if TTS should be enabled
+  const shouldShowTTS = () => {
+    const settings = getSettings();
+    return settings.ttsEnabled && settings.ttsProvider;
   };
 
   return (
@@ -158,10 +283,26 @@ export default function ChatWindow({ messages, onSend, onEditMessage, disabled, 
                   </div>
                 )}
                 {m.role === "assistant" && (
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex justify-end gap-2">
                     <Button variant="ghost" size="sm" onClick={() => copyText(m.content)}>
                       <Copy className="mr-2 h-4 w-4" /> Copy response
                     </Button>
+                    
+                    {shouldShowTTS() && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => speakText(m.content)}
+                        disabled={isSpeaking}
+                      >
+                        {isSpeaking ? (
+                          <VolumeX className="mr-2 h-4 w-4" />
+                        ) : (
+                          <Volume2 className="mr-2 h-4 w-4" />
+                        )}
+                        {isSpeaking ? "Stop" : "Speak"}
+                      </Button>
+                    )}
                   </div>
                 )}
               </article>
@@ -173,21 +314,44 @@ export default function ChatWindow({ messages, onSend, onEditMessage, disabled, 
 
       <footer className="border-t p-4">
         <div className="max-w-3xl mx-auto grid gap-3">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            placeholder={disabled ? "Enter provider, API key and model in Settings, then send." : "Type your message. Press Enter to send, Shift+Enter for a new line."}
-            rows={4}
-            disabled={loading}
-          />
+          <div className="flex gap-2 items-center">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder={disabled ? "Enter provider, API key and model in Settings, then send." : "Type your message. Press Enter to send, Shift+Enter for a new line."}
+              rows={4}
+              disabled={loading || isTranscribing}
+              className="flex-1"
+            />
+            
+            {shouldShowMicrophone() && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleRecording}
+                disabled={loading || isTranscribing}
+                className="h-10 w-10 p-2 bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800 rounded-full text-white"
+                title={isRecording ? "Stop recording" : "Start recording"}
+              >
+                {isTranscribing ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                ) : isRecording ? (
+                  <Square className="h-4 w-4 text-white" />
+                ) : (
+                  <Mic className="h-4 w-4 text-white" />
+                )}
+              </Button>
+            )}
+          </div>
+          
           <div className="flex justify-end">
-            <Button variant="cafe" onClick={submit} disabled={loading}>
+            <Button variant="cafe" onClick={submit} disabled={loading || isTranscribing}>
               {loading ? "Thinking…" : "Send"}
             </Button>
           </div>
