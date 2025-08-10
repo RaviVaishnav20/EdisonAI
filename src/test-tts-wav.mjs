@@ -2,7 +2,7 @@
 // Run with: node src/test-tts-wav.mjs
 
 // Configuration - UPDATE THESE VALUES
-const GEMINI_API_KEY = "AIzaSyD4JFTXPnWMK4z50Ls5tsyj1awnyUj6cag";
+const GEMINI_API_KEY = "";
 const MODEL = "gemini-2.5-flash-preview-tts";
 
 // WAV header creation function
